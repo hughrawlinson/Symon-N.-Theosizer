@@ -4,10 +4,12 @@
 #include <FL/FL_Button.H>
 #include <FL/Fl_Slider.H>
 #include <RtAudio.h>
+#include <RtMidi.h>
 
 #include "synth.cpp"
 
 synth *s = new synth();
+convert *c = new convert();
 
 int audio( void *outputBuffer, void *inputBuffer, unsigned int nBufferFrames, double streamTime, RtAudioStreamStatus status, void *userData ){
     unsigned int i, j;
@@ -17,9 +19,26 @@ int audio( void *outputBuffer, void *inputBuffer, unsigned int nBufferFrames, do
     }
     // Write interleaved audio data.
     for ( i=0; i<nBufferFrames; i++ ) {
-        *buffer++ = s->getNextValue();
+        double v = s->getNextValue();
+        *buffer++ = v;
+        *buffer++ = v;
     }
     return 0;
+}
+
+void midiCallback( double deltatime, std::vector< unsigned char > *message, void *userData ){
+    unsigned int nBytes = message->size();
+    for ( unsigned int i=0; i<nBytes; i++ ){
+        std::cout << "Byte " << i << " = " << (int)message->at(i) << ", ";
+    }
+    if ( nBytes > 0 ){
+        std::cout << "stamp = " << deltatime << std::endl;
+    }
+    if((int)message->at(2)==127){
+        s->noteOff();
+    } else {
+        s->noteOn(c->mtof((int)message->at(1)));
+    }
 }
 
 int main(int argc, char **argv) {
@@ -30,7 +49,7 @@ int main(int argc, char **argv) {
     }
     RtAudio::StreamParameters parameters;
     parameters.deviceId = dac.getDefaultOutputDevice();
-    parameters.nChannels = 1;
+    parameters.nChannels = 2;
     parameters.firstChannel = 0;
     unsigned int sampleRate = 44100;
     unsigned int bufferFrames = 256; // 256 sample frames
@@ -44,6 +63,23 @@ int main(int argc, char **argv) {
         e.printMessage();
         exit( 0 );
     }
+
+
+  //*************************************************************
+
+    RtMidiIn *midiin = new RtMidiIn();
+    // Check available ports.
+    unsigned int nPorts = midiin->getPortCount();
+    if ( nPorts == 0 ) {
+        std::cout << "No ports available!\n";
+    }
+    midiin->openPort( 2 );
+    // Set our callback function.  This should be done immediately after
+    // opening the port to avoid having incoming messages written to the
+    // queue.
+    midiin->setCallback( &midiCallback );
+    // Don't ignore sysex, timing, or active sensing messages.
+    midiin->ignoreTypes( false, false, false );
 
     Fl_Window *window = new Fl_Window(340,180);
     Fl_Box *box = new Fl_Box(10,10,130,20,"Symon N. Theosizer");

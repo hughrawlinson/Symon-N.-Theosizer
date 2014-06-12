@@ -15,18 +15,20 @@ class synth{
     float sustain;
     float release;
     float frequency;
+    int envTrigger;
     maxiOsc osc;
     maxiFilter filter;
+    maxiEnv env;
 
 public:
     synth(){
         this->volume = 0.5f;
         this->cutoff = 0.0f;
         this->resonance = 0.0f;
-        this->attack = 0.0f;
-        this->decay = 0.0f;
-        this->sustain = 1.0f;
-        this->release = 0.0f;
+        this->attack = 1000.0f;
+        this->decay = 500.0f;
+        this->sustain = 0.5f;
+        this->release = 1000.0f;
         this->frequency = 440.0;
     }
 
@@ -75,6 +77,10 @@ public:
     void setDecay(double decay) { this->decay = decay; }
     void setSustain(double sustain) { this->sustain = sustain; }
     void setRelease(double release) { this->release = release; }
+    void setFrequency(double frequency) { this->frequency = frequency; }
+
+    void noteOn(double freq);
+    void noteOff();
 
     double getNextValue();
 };
